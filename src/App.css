@@ -318,8 +318,8 @@ font-size: 0.875rem;
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: 383838;
-  color : ffffff;
+  background: #383838;
+  color : #ffffff;
   border: none;
   border-radius: 6px;
   padding: 0.5rem 1rem;
@@ -399,6 +399,81 @@ font-size: 0.875rem;
   transform: scale(1.05);
 }
 
+.input-box {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 0.375rem;
+}
+
+.tokens-container {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.pill-button {
+  background-color: #e5e7eb;
+  color: #374151;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  margin: 0.25rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.pill-button:hover {
+  background-color: #d1d5db;
+}
+
+/* App.css */
+
+.editor-wrapper {
+  position: relative;
+  background: #fff;
+  border-radius: 1rem 1rem 0 0;
+  min-height: 16.75rem;
+}
+
+/* ── 토큰 레이어 ── */
+.tokens-layer {
+  position: absolute;
+  top: 0;                     /* content-box의 맨 위 */
+  left: 0;                    /* content-box의 맨 왼쪽 */
+  right: 0;                   /* 너비 꽉 채우기 */
+  bottom: 0;                  /* 높이 꽉 채우기 */
+  padding: 1rem;              /* 기존 wrapper padding을 여기로 이동 */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+/* ── textarea ── */
+.hidden-textarea {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: transparent;
+  caret-color: #000;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  /* 박스 모델이 동일하도록 */
+  box-sizing: border-box;
+  padding: 1rem;               /* tokens-layer와 동일한 padding */
+}
+
+
+/* ── pill 스타일 ── */
+.pill-button {
+  background:#e5e7eb; color:#374151; padding:0.2rem 0.6rem;
+  border-radius:9999px; margin:0.1rem 0.2rem 0.1rem 0;
+  border:none; cursor:default; user-select:none;
+}
 
 
 

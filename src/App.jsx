@@ -1,8 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect , useLayoutEffect} from 'react';
 import './App.css';
 
 function App() {
   const [input, setInput] = useState('');
+  const [tokens, setTokens] = useState([]);   // 확정된 토큰
+  const [plain,  setPlain]  = useState('');   // 아직 토큰화되지 않은 문자열
+
+  const editorRef = useRef(null); 
+
   const [result, setResult] = useState('');
   const [history, setHistory] = useState([]);
   const [expandedItems, setExpandedItems] = useState({});
@@ -11,44 +16,113 @@ function App() {
   
   const textRefs = useRef([]);
 
- 
-
-  const handleInsert = (value) => {
-    setInput((prev) => `${prev.trim()} ${value} `);
+  // ─── 2. 토큰화 함수 ───
+  const tokenize = (text) => {
+    const raw = text.match(/[^+\-×÷<>→∴=()]+|[+\-×÷<>→∴=()]/g) || [];
+    return raw.map(t => t.trim()).filter(t => t !== '');
   };
 
+  // ─── 3. 입력 이벤트 핸들러 ───
+  const handleInput = () => {
+    const text = editorRef.current.innerText;
+    const all  = tokenize(text);
+    setTokens(all.slice(0, -1));
+    setPlain(all[all.length - 1] || '');
+  };
+
+  // ─── 4. Enter 키 처리 ───
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (plain.trim()) {
+        setTokens(prev => [...prev, plain]);
+        setPlain('');
+      }
+    }
+  };
+
+  // ─── 5. tokens/plain 바뀔 때 DOM 갱신 & 커서 복원 ───
+  useLayoutEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+  
+    // 1) innerHTML 재구성
+    const html = [
+      ...tokens.map(t => `<span class="pill-button">${t}</span>`),
+      `<span class="plain-text">${plain}</span>`
+    ].join(' ');
+    editor.innerHTML = html;
+  
+    // 2) 커서 복원
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    const range = document.createRange();
+  
+    const plainSpan = editor.querySelector('.plain-text');
+  
+    if (plainSpan && plainSpan.firstChild) {
+      // 텍스트 노드가 있을 때는 그 끝으로
+      range.setStart(plainSpan.firstChild, plain.length);
+    } else {
+      // 그렇지 않으면 에디터 끝으로
+      range.selectNodeContents(editor);
+      range.collapse(false);
+    }
+  
+    sel.addRange(range);
+  }, [tokens, plain]);
+  
+  
+  // ── 3. input 변화에 따른 tokens/plain 자동 갱신 ──
+  useEffect(() => {
+    const all = tokenize(input);
+    setTokens(all.slice(0, -1));
+    setPlain(all[all.length - 1] || '');
+  }, [input]);
+
+  // ── 4. textarea onChange 핸들러 ──
+  const handleChange = e => {
+    setInput(e.target.value);
+  };
+
+ // ── 5. 버튼으로 연산자 삽입 ──
+  const handleInsert = op => {
+  // 기존 텍스트 끝에 연산자 삽입
+    setInput(prev => prev + op);
+  };
+
+  // ── 6. 연산 수행 ──
   const handleEvaluate = () => {
     if (!input.trim()) {
       setResult('입력값이 없습니다.');
       return;
     }
-  
-    const tokens = input.trim().split(/\s+/);
-  
-    let output = tokens[0];
-    let i = 1;
-    while (i < tokens.length - 1) {
-      const op = tokens[i];
-      const next = tokens[i + 1];
+    const rawTokens = input.trim().match(/[^+\-×÷<>→∴=()]+|[+\-×÷<>→∴=()]/g) || [];
+    const toks = rawTokens.map(t => t.trim()).filter(Boolean);
+
+    let output = toks[0];
+    for (let i = 1; i < toks.length - 1; i += 2) {
+      const op = toks[i], next = toks[i + 1];
       output = applyMeaning(output, next, op);
-      i += 2;
     }
-  
+
     setResult(output);
-    setHistory((prev) => [...prev, ` ${output}`]);
+    setHistory(prev => [...prev, output]);
   };
   
+  
+  // ── 7. 의미 결합 함수 ──
   const applyMeaning = (a, b, op) => {
     switch (op) {
-      case '+': return `${a}${b}`;
-      case '-': return `${a}에서 ${b}의 개념이 제거되어 정제된 의미가 됩니다`;
-      case '×': return `${a}과 ${b}이(가) 곱해져 복합적인 의미를 가집니다`;
-      case '÷': return `${a}을(를) ${b}로 나눠 세부 요소를 분리합니다`;
-      case '<>': return `${a}과 ${b}은(는) 대조적인 개념으로 비교됩니다`;
-      case '→': return `${a}이(가) ${b}으로 변화합니다`;
-      case '()': return `${a} 안에 ${b}이(가) 부가적으로 포함됩니다`;
-      case '∴': return `${a}와 ${b}으로부터 논리적인 결론이 도출됩니다`;
-      default: return `${a} ${op} ${b}`;
+      case '+':  return `${a}${b}`;
+      case '-':  return `${a}에서 ${b} 제거`;
+      case '×':  return `${a}과 ${b} 복합`;
+      case '÷':  return `${a}을 ${b}로 분리`;
+      case '<>': return `${a} vs ${b}`;
+      case '→':  return `${a}→${b}`;
+      case '()': return `${a}(${b})`;
+      case '∴':  return `${a}, ${b} ⇒ 결론`;
+      default:   return `${a} ${op} ${b}`;
     }
   };
 
@@ -186,15 +260,27 @@ function App() {
           <div className="title-panel">
           <h1 className="title">TEXT <br />CALCULATION</h1>
           <div className="panel-box">
-          <textarea
-            className="input-area"
-            placeholder="텍스트를 입력하세요..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-          />
+          {/* ── 레이어드 토큰 에디터 ── */}
+           <div className="editor-wrapper">
+                <div className="tokens-layer">
+                  {tokens.map((t, idx) =>
+                    <button key={idx} className="pill-button">
+                      {t}
+                    </button>
+                  )}
+                  <span className="plain-text">{plain}</span>
+                </div>
+                <textarea
+                  className="hidden-textarea"
+                  placeholder="텍스트를 입력하세요..."
+                  value={input}
+                  onChange={handleChange}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                />
+              </div>
 
+          {/* ── 결과 박스 ── */}
           <div
             className={result ? 'result-box' : 'result-box empty'}
             onClick={() => {
@@ -237,7 +323,7 @@ function App() {
       </div>
       {modalOpen && (
           <div className="modal-overlay" onClick={() => setModalOpen(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}> /* 내부클릭 방지 */
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 
               </div>
